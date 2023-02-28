@@ -27,8 +27,7 @@ describe('PostgresPubSub', () => {
         expect(payload).toEqual('test');
         resolve(null);
       });
-      const succeed = ps.publish('a', 'test');
-      expect(succeed).resolves.toBe(undefined);
+      subscriber.notify('a', 'test');
     });
   });
 
@@ -36,30 +35,24 @@ describe('PostgresPubSub', () => {
     await subscriber.listenTo('a');
     const ps = new PostgresPubSub(subscriber);
 
-    const subId = await ps.subscribe('a', () => {
+    const subId = ps.subscribe('a', () => {
       // We should not reach this point.
       expect.fail();
     });
-    await ps.unsubscribe(subId);
-    const succeed = ps.publish('a', 'test');
-    expect(succeed).rejects.toThrow('Connection terminated');
+    await ps.unsubscribeIds([subId]);
+    await subscriber.notify('a', 'test');
+
+    // Expect no notification within three seconds.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   });
 
-  test('Should emit error when payload exceeds Postgres 8000 character limit', async () => {
-    await subscriber.listenTo('a');
-    const ps = new PostgresPubSub(subscriber);
-
-    await ps.subscribe('a', () => {});
-    await expect(ps.publish('a', 'a'.repeat(9000))).rejects.toThrow('payload string too long');
-  });
-
-  test('AsyncIterator should trigger event on asyncIterator when published', async (done) => {
+  test('AsyncIterator should trigger event on asyncIterator when published', async () => {
     const eventName = 'test';
     await subscriber.listenTo(eventName);
     const ps = new PostgresPubSub(subscriber);
     const iterator = ps.asyncIterator(eventName);
 
-    await new Promise((resolve, reject) => {
+    let promise = new Promise((resolve, reject) => {
       iterator
         .next()
         .then((result) => {
@@ -71,7 +64,9 @@ describe('PostgresPubSub', () => {
         .catch(reject);
     });
 
-    await ps.publish(eventName, { test: true });
+    await subscriber.notify(eventName, { test: true });
+
+    await promise;
   });
 
   test('AsyncIterator should not trigger event on asyncIterator when publishing other event', async (done) => {

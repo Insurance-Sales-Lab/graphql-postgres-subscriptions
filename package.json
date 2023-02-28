@@ -12,18 +12,16 @@
     "url": "https://github.com/Insurance-Sales-Lab/graphql-postgres-subscriptions"
   },
   "peerDependencies": {
-    "graphql": "^15.0.0 || ^16.0.0",
     "pg": "^8.9.0",
     "pg-listen": "^1.7.0"
   },
   "devDependencies": {
-    "graphql": "^16.6.0",
     "prettier": "^2.8.4",
     "typescript": "^4.9.5",
     "vitest": "^0.29.1"
   },
   "scripts": {
-    "test": "vitest --run",
+    "test": "vitest run --threads false",
     "typecheck": "./node_modules/.bin/tsc --project ./tsconfig.json --noEmit",
     "build": "npm run build:clean && npm run build:compile && npm run build:copy",
     "build:clean": "rm -rf dist && mkdir dist",
