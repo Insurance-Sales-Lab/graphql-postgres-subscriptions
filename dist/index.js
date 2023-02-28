@@ -1,4 +1,4 @@
-import { PubSubAsyncIterator } from './pub-sub-async-iterator';
+import { PubSubAsyncIterator } from './pub-sub-async-iterator.js';
 export class PostgresPubSub {
     constructor(subscriber) {
         this.pgListen = subscriber;
