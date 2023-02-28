@@ -1,49 +1,42 @@
-import { PubSubEngine } from 'graphql-subscriptions';
 import type { Subscriber as PgListenSubscriber } from 'pg-listen';
-import { EventEmitterAsyncIterator } from './event-emitter-to-async-iterator';
+import { PubSubAsyncIterator } from './pub-sub-async-iterator';
 
-export class PostgresPubSub extends PubSubEngine {
+export class PostgresPubSub {
+  constructor(subscriber: PgListenSubscriber) {
+    this.pgListen = subscriber;
+  }
+
   private readonly pgListen: PgListenSubscriber;
   private subscriptions: {
     [key: string]: [triggerName: string, onMessage: (...args: any[]) => void];
   } = {};
-  private subIdCounter: number = 0;
+  private subIdCounter: bigint = 0n;
 
-  constructor(subscriber: PgListenSubscriber) {
-    super();
-
-    this.pgListen = subscriber;
-    // @ts-ignore
-    this.ee = this.pgListen.notifications;
-  }
-
-  async publish(triggerName: string, payload: any) {
-    await this.pgListen.notify(triggerName, payload);
-  }
-
-  subscribe(triggerName: string, onMessage: (...args: any[]) => void) {
+  subscribe(triggerName: string, onMessage: (...args: any[]) => void): bigint {
     this.pgListen.notifications.on(triggerName, onMessage);
     ++this.subIdCounter;
-    this.subscriptions[this.subIdCounter] = [triggerName, onMessage];
-    return Promise.resolve(this.subIdCounter);
+    this.subscriptions[this.subIdCounter.toString()] = [triggerName, onMessage];
+    return this.subIdCounter;
   }
 
-  async unsubscribe(subId: number) {
-    delete this.subscriptions[subId];
+  unsubscribeIds(subscriptionIds: bigint[]) {
+    for (const subscriptionId of subscriptionIds) {
+      const sub = this.subscriptions[subscriptionId.toString()];
+      if (sub) {
+        this.pgListen.notifications.removeListener(sub[0], sub[1]);
+        delete this.subscriptions[subscriptionId.toString()];
+      }
+    }
   }
 
-  /*
-   * The difference between this function and asyncIterator is that the
-   * topics can still be empty.
-   */
-  async asyncIteratorPromised(triggers: string[]) {
-    return new EventEmitterAsyncIterator(this.pgListen, triggers);
+  close() {
+    for (const [triggerName, onMessage] of Object.values(this.subscriptions)) {
+      this.pgListen.notifications.removeListener(triggerName, onMessage);
+    }
+    this.subscriptions = {};
   }
 
-  asyncIterator(triggers: string | string[]) {
-    return new EventEmitterAsyncIterator(
-      this.pgListen,
-      Array.isArray(triggers) ? triggers : [triggers],
-    );
+  asyncIterator<T>(triggers: string | string[]): AsyncIterableIterator<T> {
+    return new PubSubAsyncIterator<T>(this, Array.isArray(triggers) ? triggers : [triggers]);
   }
 }
