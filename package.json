@@ -1,7 +1,7 @@
 {
   "name": "graphql-subscriptions-postgres",
   "version": "1.0.1",
-  "main": "./build/index.ts",
+  "main": "./dist/index.ts",
   "type": "module",
   "license": "MIT",
   "engines": {
