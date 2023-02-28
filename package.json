@@ -7,7 +7,7 @@
   "engines": {
     "node": ">=18"
   },
-  "files": ["build"],
+  "files": ["dist"],
   "repository": {
     "type": "git",
     "url": "https://github.com/Insurance-Sales-Lab/graphql-postgres-subscriptions"
